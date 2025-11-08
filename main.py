@@ -46,12 +46,18 @@ def render_email(events_by_day):
     return template.render(events_by_day=events_by_day)
 
 
-def send_email(subject, html_body, to_addresses, email_from):
+def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = email_from
     msg["To"] = ", ".join(to_addresses)
-
+    if dry_run is True:
+        click.echo("DRY RUN: Email would be sent with the following details:")
+        click.echo(f"Subject: {subject}")
+        click.echo(f"From: {email_from}")
+        click.echo(f"To: {', '.join(to_addresses)}")
+        click.echo("Email body would be sent but not actually delivered.")
+        return
     msg.attach(MIMEText(html_body, "html"))
     with smtplib.SMTP_SSL(settings.email_host, settings.email_port) as server:
         server.login(settings.email_username, settings.email_password)
@@ -85,7 +91,12 @@ def send_email(subject, html_body, to_addresses, email_from):
     is_flag=True,
     help="View email in web browser.",
 )
-def main(calendar_id: str, days: int, subject: str, recipient_emails: str, web: bool):
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print email details without sending.",
+)
+def main(calendar_id: str, days: int, subject: str, recipient_emails: str, web: bool, dry_run: bool):
     events_by_day = get_events(calendar_id, days)
     html_body = render_email(events_by_day)
     if web:
@@ -99,6 +110,7 @@ def main(calendar_id: str, days: int, subject: str, recipient_emails: str, web: 
             html_body=html_body,
             to_addresses=[email.strip() for email in recipient_emails.split(",")],
             email_from=settings.email_from or settings.email_username,
+            dry_run=dry_run
         )
 
 if __name__ == "__main__":
