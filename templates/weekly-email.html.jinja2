@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: sans-serif; margin: 2em; color: #333; }
+    h2 { border-bottom: 2px solid #ccc; padding-bottom: 0.2em; }
+    .event {
+      margin: 0.5em 0;
+      padding: 0.5em;
+      border-left: 3px solid #1976d2;
+      background: #f8f9fa;
+    }
+    .time { color: #666; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>Weekly Events</h1>
+  {% for day, events in events_by_day.items()|sort %}
+    <h2>{{ day.strftime('%A, %B %d') }}</h2>
+    {% for e in events %}
+      <div class="event">
+        <strong>{{ e.summary }}</strong><br>
+        <span class="time">
+          {{ e.start.strftime('%I:%M %p') if e.start.time() else 'All day' }}
+          {% if e.location %} — {{ e.location }}{% endif %}
+        </span>
+        {% if e.description %}
+          <p>{{ e.description }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+</body>
+</html>

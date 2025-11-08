@@ -1,0 +1,17 @@
+[project]
+name = "calendar-alerts"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.3.0",
+    "gcsa>=2.6.0",
+    "jinja2>=3.1.6",
+    "pydantic-settings>=2.11.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+]
