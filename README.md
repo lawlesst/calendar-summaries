@@ -1,4 +1,4 @@
-# calendar-alerts
+# calendar-summaries
 
 Command line tool to generate weekly summaries of Google Calendar events.
 

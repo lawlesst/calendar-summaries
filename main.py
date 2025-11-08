@@ -46,10 +46,10 @@ def render_email(events_by_day):
     return template.render(events_by_day=events_by_day)
 
 
-def send_email(subject, html_body, to_addresses):
+def send_email(subject, html_body, to_addresses, email_from):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = settings.email_username
+    msg["From"] = email_from
     msg["To"] = ", ".join(to_addresses)
 
     msg.attach(MIMEText(html_body, "html"))
@@ -98,6 +98,7 @@ def main(calendar_id: str, days: int, subject: str, recipient_emails: str, web: 
             subject=subject,
             html_body=html_body,
             to_addresses=[email.strip() for email in recipient_emails.split(",")],
+            email_from=settings.email_from or settings.email_username,
         )
 
 if __name__ == "__main__":
