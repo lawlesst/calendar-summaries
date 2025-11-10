@@ -6,11 +6,9 @@ from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from pydoc import cli
 from zoneinfo import ZoneInfo
 
 import click
-from gcsa.calendar import Calendar
 from gcsa.google_calendar import GoogleCalendar
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -19,20 +17,21 @@ from config import settings
 creds = Path(__file__).parent / "creds" / "credentials.json"
 
 
-def get_events(calendar_id: str, days: int):
+def get_events(calendar_id: str, days: int, include_today: bool = False):
+    day_offset = 1 if not include_today else 0
     gc = GoogleCalendar(credentials_path=creds)
     events = gc.get_events(
         calendar_id=calendar_id,
-        time_min=datetime.now(),
-        time_max=datetime.now() + timedelta(days=days),
+        time_min=datetime.today() + timedelta(days=day_offset),
+        time_max=datetime.today() + timedelta(days=days),
         single_events=True,
         order_by="startTime",
     )
     grouped = defaultdict(list)
     for e in events:
-        day = e.start.date()
-        e.start = e.start.astimezone(ZoneInfo("America/New_York"))
-        e.end = e.end.astimezone(ZoneInfo("America/New_York"))
+        day = e.start.astimezone(ZoneInfo(settings.timezone)).date()
+        e.start = e.start.astimezone(ZoneInfo(settings.timezone))
+        e.end = e.end.astimezone(ZoneInfo(settings.timezone))
         grouped[day].append(e)
     return grouped
 
@@ -72,7 +71,7 @@ def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
 )
 @click.option(
     "--days",
-    default=6,
+    default=7,
     help="Number of days ahead to fetch events for.",
 )
 @click.option(
@@ -86,6 +85,12 @@ def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
     default=settings.recipient_emails,
     help="Comma-separated list of recipient email addresses.",
 )
+@click.option("--include-today", is_flag=True, help="Include today's events. By default next day events only are displayed.")
+@click.option(
+    "--email",
+    is_flag=True,
+    help="Send email.",
+)
 @click.option(
     "--web",
     is_flag=True,
@@ -96,15 +101,17 @@ def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
     is_flag=True,
     help="Print email details without sending.",
 )
-def main(calendar_id: str, days: int, subject: str, recipient_emails: str, web: bool, dry_run: bool):
-    events_by_day = get_events(calendar_id, days)
+def main(calendar_id: str, days: int, subject: str, recipient_emails: str, include_today: bool, email: bool, web: bool, dry_run: bool):
+    events_by_day = get_events(calendar_id, days, include_today=include_today)
     html_body = render_email(events_by_day)
+    if email is True and web is True:
+        raise click.UsageError("Cannot use --email and --web options together.")
     if web:
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
             f.write(html_body)
             webbrowser.open(f'file://{f.name}')
-    else:
+    elif email:
         _ = send_email(
             subject=subject,
             html_body=html_body,
@@ -112,6 +119,12 @@ def main(calendar_id: str, days: int, subject: str, recipient_emails: str, web: 
             email_from=settings.email_from or settings.email_username,
             dry_run=dry_run
         )
+    else:
+        for day, events in sorted(events_by_day.items()):
+            click.echo(f"{day.strftime('%A, %B %d, %Y')}:")
+            for e in events:
+                click.echo(f"  - {e.start.strftime('%Y-%m-%d %I:%M %p')} - {e.summary}")
+            click.echo()
 
 if __name__ == "__main__":
     main()

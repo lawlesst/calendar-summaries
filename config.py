@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     default_calendar_id: str
+    timezone: Optional[str] = "America/New_York"
     
     # Email server settings
     email_host: Optional[str] = "smtp.gmail.com"
