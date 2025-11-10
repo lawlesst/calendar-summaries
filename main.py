@@ -57,9 +57,11 @@ def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
         click.echo(f"To: {', '.join(to_addresses)}")
         click.echo("Email body would be sent but not actually delivered.")
         return
+    click.echo(f"Connecting to email server {settings.email_host}:{settings.email_port}...")
     msg.attach(MIMEText(html_body, "html"))
     with smtplib.SMTP_SSL(settings.email_host, settings.email_port) as server:
         server.login(settings.email_username, settings.email_password)
+        click.echo("Sending email to: " + ", ".join(to_addresses))
         server.send_message(msg)
 
 
@@ -107,11 +109,12 @@ def main(calendar_id: str, days: int, subject: str, recipient_emails: str, inclu
     if email is True and web is True:
         raise click.UsageError("Cannot use --email and --web options together.")
     if web:
-        
+        click.echo("Opening email in web browser...")
         with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
             f.write(html_body)
             webbrowser.open(f'file://{f.name}')
     elif email:
+        click.echo("Sending email...")
         _ = send_email(
             subject=subject,
             html_body=html_body,
