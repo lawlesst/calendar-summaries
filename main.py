@@ -19,11 +19,16 @@ creds = Path(__file__).parent / "creds" / "credentials.json"
 
 def get_events(calendar_id: str, days: int, include_today: bool = False):
     day_offset = 1 if not include_today else 0
+    # I want time min to be the end of today if day_offset is 1, else make it the beginning of today
+    if day_offset == 1:
+        time_min = datetime.now(ZoneInfo(settings.timezone)).replace(hour=23, minute=59, second=59, microsecond=999999)
+    else:
+        time_min = datetime.now(ZoneInfo(settings.timezone)).replace(hour=0, minute=0, second=0, microsecond=0)
     gc = GoogleCalendar(credentials_path=creds)
     events = gc.get_events(
         calendar_id=calendar_id,
-        time_min=datetime.today() + timedelta(days=day_offset),
-        time_max=datetime.today() + timedelta(days=days),
+        time_min=time_min,
+        time_max=time_min + timedelta(days=days),
         single_events=True,
         order_by="startTime",
     )
