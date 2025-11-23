@@ -18,6 +18,17 @@
   <h1>Weekly Events</h1>
   {% for day, events in events_by_day.items()|sort %}
     <h2>{{ day.strftime('%A, %B %d') }}</h2>
+    {% if day in all_day_events %}
+      {% for e in all_day_events[day] %}
+        <div class="event">
+          <strong>{{ e.summary }}</strong><br>
+          <span class="time">all day{% if e.location %} Location: {{ e.location }}{% endif %}</span><br>
+          {% if e.description %}
+            <p>{{ e.description }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
     {% for e in events %}
       <div class="event">
         <strong>{{ e.summary }}</strong><br>

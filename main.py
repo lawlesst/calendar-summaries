@@ -33,21 +33,27 @@ def get_events(calendar_id: str, days: int, include_today: bool = False):
         order_by="startTime",
     )
     grouped = defaultdict(list)
+    all_day = defaultdict(list)
     for e in events:
-        day = e.start.astimezone(ZoneInfo(settings.timezone)).date()
-        e.start = e.start.astimezone(ZoneInfo(settings.timezone))
+        try:
+            start = e.start.astimezone(ZoneInfo(settings.timezone))
+        except Exception as ex:
+            all_day[e.start].append(e)
+            continue
+        day = start.date()
+        e.start = start
         e.end = e.end.astimezone(ZoneInfo(settings.timezone))
         grouped[day].append(e)
-    return grouped
+    return grouped, all_day
 
 
-def render_email(events_by_day):
+def render_email(events_by_day, all_day_events):
     env = Environment(
         loader=FileSystemLoader("templates"),
         autoescape=select_autoescape(["html", "xml"])
     )
     template = env.get_template("weekly-email.html.jinja2")
-    return template.render(events_by_day=events_by_day)
+    return template.render(events_by_day=events_by_day, all_day_events=all_day_events)
 
 
 def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
@@ -109,8 +115,8 @@ def send_email(subject, html_body, to_addresses, email_from, dry_run=False):
     help="Print email details without sending.",
 )
 def main(calendar_id: str, days: int, subject: str, recipient_emails: str, include_today: bool, email: bool, web: bool, dry_run: bool):
-    events_by_day = get_events(calendar_id, days, include_today=include_today)
-    html_body = render_email(events_by_day)
+    events_by_day, all_day_events = get_events(calendar_id, days, include_today=include_today)
+    html_body = render_email(events_by_day, all_day_events)
     if email is True and web is True:
         raise click.UsageError("Cannot use --email and --web options together.")
     if web:
@@ -130,6 +136,9 @@ def main(calendar_id: str, days: int, subject: str, recipient_emails: str, inclu
     else:
         for day, events in sorted(events_by_day.items()):
             click.echo(f"{day.strftime('%A, %B %d, %Y')}:")
+            if day in all_day_events:
+                for e in all_day_events[day]:
+                    click.echo(f"  - all day - {e.summary}")
             for e in events:
                 click.echo(f"  - {e.start.strftime('%Y-%m-%d %I:%M %p')} - {e.summary}")
             click.echo()
